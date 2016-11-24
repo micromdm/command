@@ -1,0 +1,89 @@
+package command
+
+import (
+	"time"
+
+	"github.com/gogo/protobuf/proto"
+	"github.com/micromdm/mdm"
+	uuid "github.com/satori/go.uuid"
+
+	"github.com/micromdm/command/internal"
+)
+
+type Event struct {
+	ID      string
+	Time    time.Time
+	Payload mdm.Payload
+}
+
+// NewEvent returns an Event with a unique ID and the current time.
+func NewEvent(cmd mdm.Payload) *Event {
+	event := Event{
+		ID:      uuid.NewV4().String(),
+		Time:    time.Now().UTC(),
+		Payload: cmd,
+	}
+	return &event
+}
+
+// MarshalEvent serializes an event to a protocol buffer wire format.
+func MarshalEvent(e *Event) ([]byte, error) {
+	payload := &internal.Payload{
+		CommandUuid: e.Payload.CommandUUID,
+	}
+	if e.Payload.Command != nil {
+		payload.Command = &internal.Command{
+			RequestType: e.Payload.Command.RequestType,
+		}
+	}
+	switch e.Payload.Command.RequestType {
+	case "DeviceInformation":
+		payload.Command.DeviceInformation = &internal.DeviceInformation{
+			Queries: e.Payload.Command.DeviceInformation.Queries,
+		}
+	case "InstallProfile":
+		payload.Command.InstallProfile = &internal.InstallProfile{
+			Payload: e.Payload.Command.InstallProfile.Payload,
+		}
+	}
+	return proto.Marshal(&internal.Event{
+		Id:      e.ID,
+		Time:    e.Time.UnixNano(),
+		Payload: payload,
+	})
+
+}
+
+// UnmarshalEvent parses a protocol buffer representation of data into
+// the Event.
+func UnmarshalEvent(data []byte, e *Event) error {
+	var pb internal.Event
+	if err := proto.Unmarshal(data, &pb); err != nil {
+		return err
+	}
+	e.ID = pb.Id
+	e.Time = time.Unix(0, pb.Time).UTC()
+	if pb.Payload == nil {
+		return nil
+	}
+	e.Payload = mdm.Payload{
+		CommandUUID: pb.Payload.CommandUuid,
+	}
+	if pb.Payload.Command == nil {
+		return nil
+	}
+	e.Payload.Command = &mdm.Command{
+		RequestType: pb.Payload.Command.RequestType,
+	}
+	switch pb.Payload.Command.RequestType {
+	case "DeviceInformation":
+		e.Payload.Command.DeviceInformation = mdm.DeviceInformation{
+			Queries: pb.Payload.Command.DeviceInformation.Queries,
+		}
+	case "InstallProfile":
+		e.Payload.Command.InstallProfile = mdm.InstallProfile{
+			Payload: pb.Payload.Command.InstallProfile.Payload,
+		}
+	}
+	return nil
+}

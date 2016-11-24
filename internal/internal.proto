@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package internal;
+
+message Event {
+       	string id = 1;
+       	int64 time = 2;
+        Payload payload = 3;
+}
+
+message Payload {
+    string command_uuid = 1;
+    Command command = 2;
+}
+
+message Command {
+    string request_type = 1;
+    DeviceInformation device_information = 2;
+    InstallProfile install_profile = 3;
+}
+
+message DeviceInformation {
+    repeated string queries = 1;
+}
+
+message InstallProfile {
+    bytes payload = 1;
+}
+
