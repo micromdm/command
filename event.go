@@ -7,7 +7,7 @@ import (
 	"github.com/micromdm/mdm"
 	uuid "github.com/satori/go.uuid"
 
-	"github.com/micromdm/command/internal"
+	"github.com/micromdm/command/internal/commandproto"
 )
 
 type Event struct {
@@ -28,25 +28,25 @@ func NewEvent(cmd mdm.Payload) *Event {
 
 // MarshalEvent serializes an event to a protocol buffer wire format.
 func MarshalEvent(e *Event) ([]byte, error) {
-	payload := &internal.Payload{
+	payload := &commandproto.Payload{
 		CommandUuid: e.Payload.CommandUUID,
 	}
 	if e.Payload.Command != nil {
-		payload.Command = &internal.Command{
+		payload.Command = &commandproto.Command{
 			RequestType: e.Payload.Command.RequestType,
 		}
 	}
 	switch e.Payload.Command.RequestType {
 	case "DeviceInformation":
-		payload.Command.DeviceInformation = &internal.DeviceInformation{
+		payload.Command.DeviceInformation = &commandproto.DeviceInformation{
 			Queries: e.Payload.Command.DeviceInformation.Queries,
 		}
 	case "InstallProfile":
-		payload.Command.InstallProfile = &internal.InstallProfile{
+		payload.Command.InstallProfile = &commandproto.InstallProfile{
 			Payload: e.Payload.Command.InstallProfile.Payload,
 		}
 	}
-	return proto.Marshal(&internal.Event{
+	return proto.Marshal(&commandproto.Event{
 		Id:      e.ID,
 		Time:    e.Time.UnixNano(),
 		Payload: payload,
@@ -57,7 +57,7 @@ func MarshalEvent(e *Event) ([]byte, error) {
 // UnmarshalEvent parses a protocol buffer representation of data into
 // the Event.
 func UnmarshalEvent(data []byte, e *Event) error {
-	var pb internal.Event
+	var pb commandproto.Event
 	if err := proto.Unmarshal(data, &pb); err != nil {
 		return err
 	}
